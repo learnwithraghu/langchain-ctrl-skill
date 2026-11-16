@@ -30,46 +30,56 @@ for further reading.
    ```sh
    uv sync --locked
    uv run --locked python -m unittest discover -s tests -v
-   uv run --locked python demo.py --dry-run "How do I get a refund?"
    ```
 
-2. Create an [OpenRouter API key](https://openrouter.ai/keys). In your terminal
-   (macOS/Linux), set it **without putting it in the command history**:
+2. Create an [OpenAI API key](https://platform.openai.com/api-keys). In your
+   terminal (macOS/Linux), set it **without putting it in the command history**:
 
    ```sh
-   read -rs OPENROUTER_API_KEY; export OPENROUTER_API_KEY; echo
+   read -rs OPENAI_API_KEY; export OPENAI_API_KEY; echo
    ```
 
    Paste the key and press Enter. In PowerShell, use
-   `$env:OPENROUTER_API_KEY = Read-Host "OpenRouter key"` in a private terminal.
-   Never display, share, or commit the key. Run from a terminal that is not
-   being projected when entering it.
-3. Rehearse a live call:
+   `$env:OPENAI_API_KEY = Read-Host "OpenAI key"` in a private terminal. Never
+   display, share, or commit the key. Run from a terminal that is not being
+   projected when entering it.
+3. Optionally create an [OpenRouter API key](https://openrouter.ai/keys) to compare
+   providers in `demo-05.py`. Set it in macOS/Linux with
+   `read -rs OPENROUTER_API_KEY; export OPENROUTER_API_KEY; echo` or in PowerShell
+   with `$env:OPENROUTER_API_KEY = Read-Host "OpenRouter key"`. Then choose
+   `openrouter` as the provider. The first four examples use OpenAI.
+4. Rehearse a live call:
 
    ```sh
-   uv run --locked python demo.py "How do I get a refund?"
+   uv run --locked python demos/demo-04.py
+   uv run --locked python demos/demo-05.py
    ```
 
-   The default is `openrouter/free`, whose availability and rate limits can change.
-   Select a model available to your account with `export OPENROUTER_MODEL="provider/model"`
-   (PowerShell: `$env:OPENROUTER_MODEL = "provider/model"`). Check
-   [models and pricing](https://openrouter.ai/models) before using a paid model;
-   API calls send the question and snippets to OpenRouter and its chosen provider.
-   Use only the fictional sample data, never private student data.
-4. Have the dry-run output ready in case of network, key, quota, or model failure.
-   It displays the actual prepared messages **without** calling a model; it does not
-   generate an answer. Clear your key from the environment after class (`unset
-   OPENROUTER_API_KEY`, or `Remove-Item Env:OPENROUTER_API_KEY` in PowerShell).
+   `demo-05.py` uses OpenAI by default. To switch it to OpenRouter, set
+   `LLM_PROVIDER=openrouter` (PowerShell: `$env:LLM_PROVIDER = "openrouter"`).
+   Calls send the question and demo context to the selected provider. Use only the
+   fictional sample data, never private student data. Check provider pricing and
+   model availability before class. Clear API keys from the environment afterward.
 
 ## Files and constraints
 
-`demo.py` uses four fictional academy snippets, a simple keyword retriever, a
-`ChatPromptTemplate`, `ChatOpenRouter`, and `StrOutputParser` joined with LangChain
-Expression Language (LCEL). The Python code and lockfile are intentionally small in
-scope: no vector database, embeddings, tool calls, or autonomous agent are required.
-`--dry-run` shows the exact prompt; `--help` lists options. Model answers are
-non-deterministic and citations are requested, not verified.
+The [demos](demos/) folder builds the idea in five short, runnable steps. Each file
+stands alone and adds one LangChain concept to the previous example: model call,
+prompt template, output parser, retrieval, then provider choice. The first four use
+OpenAI; the last can use OpenAI or OpenRouter. Each makes a live model call with a
+hard-coded question, so set the relevant API key first. Run the files in order:
+
+```sh
+uv run --locked python demos/demo-01.py
+uv run --locked python demos/demo-02.py
+uv run --locked python demos/demo-03.py
+uv run --locked python demos/demo-04.py
+uv run --locked python demos/demo-05.py
+```
+
+`demo-04.py` uses two fictional academy snippets and a tiny keyword lookup to
+illustrate adding retrieved context. No vector database, embeddings, tool calls, or
+autonomous agent are required.
 
 If a call fails, check the key, internet access, selected model, account balance,
-and rate limits. Retry with an available model or continue with `--dry-run`.
-Do not paste error logs containing secrets into slides or chat.
+and rate limits. Do not paste error logs containing secrets into slides or chat.

@@ -1,44 +1,38 @@
-# 40–50 min — Live demo: ask a fictional academy
+# 40–50 min — Live demo: build a question-answering chain
 
-**Goal:** trace a real question through retrieval, prompt, OpenRouter model and parser.
-Prepare the environment and key before class using the [README](../README.md).
+**Goal:** build from one model call to a context-grounded answer, introducing one
+LangChain idea per file. Prepare an OpenAI API key before class using the
+[README](../README.md).
 
 ## Timing and speaking notes
 
-- **40–42: Show the input.** Open `demo.py` and point to `DOCUMENTS`: four small,
-  fictional policy snippets with labels. Say: “This is sample data, not a real policy.”
-- **42–44: Reveal retrieval and prompt without an API call.**
+- **40–41: Start with the model.** Open `demos/demo-01.py`. The question goes
+  straight to `model.invoke`; the model returns a message, and `.content` is its text.
+- **41–42: Add a prompt template.** Compare `demos/demo-02.py`. The template turns
+  the question into model messages before the model call.
+- **42–43: Parse the output.** Compare `demos/demo-03.py`. `StrOutputParser` turns
+  the model message into plain text; `|` connects the steps.
+- **43–46: Add retrieval.** Open `demos/demo-04.py`. The new idea is the small
+  `retrieve` function: it selects one matching snippet and supplies it as context.
+  The search is intentionally simple, not a general search system. The snippets
+  are fictional, not real academy policy. Run:
 
   ```sh
-  uv run --locked python demo.py --dry-run "How do I get a refund?"
+  uv run --locked python demos/demo-04.py
   ```
 
-  Show the `[refunds]` snippet and the system instruction. Explain that `prepare`
-  passes the question to both `RunnableLambda(retrieve)` and `RunnablePassthrough`,
-  then formats messages with `ChatPromptTemplate`.
-- **44–47: Run live.**
+- **46–48: Switch providers.** Open `demos/demo-05.py`. The prompt and chain stay
+  the same; only the chat model changes. Run with the OpenAI key, then, if configured,
+  set `LLM_PROVIDER=openrouter` and run again to compare.
 
   ```sh
-  uv run --locked python demo.py "How do I get a refund?"
+  uv run --locked python demos/demo-05.py
+  LLM_PROVIDER=openrouter uv run --locked python demos/demo-05.py
   ```
 
-  Expect a paraphrase of “within 14 days of enrollment, email student support,”
-  ideally citing `[refunds]`. Exact text and even correctness can vary; compare
-  against the source rather than promising a specific answer. Point to
-  `prepare | model | StrOutputParser()` and `.invoke`.
-- **47–49: Test a different question and a gap.**
+- **48–50: Check.** “Where did the 14-day fact come from?” The supplied snippet,
+  not a built-in model memory. Ask what would need to change to replace the toy
+  keyword lookup with a vector search.
 
-  ```sh
-  uv run --locked python demo.py "When are Python workshops?"
-  uv run --locked python demo.py "What is the parking fee?"
-  ```
-
-  The first should use `[schedule]`; the second has no matching snippet and should
-  say it does not know. If it does not, call that a failure, not a feature. Use
-  `--dry-run` on either to inspect the retrieved context.
-- **49–50: Check.** “Where did the 14-day fact come from?” The supplied snippet,
-  not a built-in model memory. Citations are generated text, not independently verified.
-
-If the live service is unavailable, show dry-run outputs for all three questions,
-explain that no answer was generated, and walk through the expected answer using
-the snippets. Do not claim the model was called.
+All examples call the selected model API. If it is unavailable, explain the code
+flow without claiming an answer was generated.
