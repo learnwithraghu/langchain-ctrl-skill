@@ -1,44 +1,47 @@
+import importlib.util
 import os
-import subprocess
-import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
-import demo
-from langchain_core.messages import AIMessage
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnableLambda
+
+def load_demo(number):
+    path = Path(__file__).resolve().parents[1] / "demos" / f"demo-{number:02}.py"
+    spec = importlib.util.spec_from_file_location(f"demo_{number:02}", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+retrieval_demo = load_demo(4)
+provider_demo = load_demo(5)
 
 
 class DemoTests(unittest.TestCase):
-    def test_refund_retrieval_and_unknown_query(self):
-        self.assertIn("[refunds]", demo.retrieve("How do I get a refund?"))
-        self.assertEqual(demo.retrieve("quantum bananas"), "No matching snippets found.")
+    def test_retrieval_matches_topic_and_handles_unknown(self):
+        self.assertIn("14 days", retrieval_demo.retrieve("How do I get a refund?"))
+        self.assertEqual(
+            retrieval_demo.retrieve("What is the parking fee?"),
+            "No matching information.",
+        )
 
-    def test_prepared_prompt_and_chain(self):
-        messages = demo.prepare.invoke("When are Python workshops?").to_messages()
-        self.assertIn("[schedule]", messages[1].content)
-        chain = demo.prepare | RunnableLambda(lambda _: AIMessage(content="Test [schedule]")) | StrOutputParser()
-        self.assertEqual(chain.invoke("When are Python workshops?"), "Test [schedule]")
+    def test_provider_selection_reuses_chat_model_interface(self):
+        with patch.dict(os.environ, {
+            "OPENAI_MODEL": "gpt-4o-mini",
+            "OPENROUTER_MODEL": "openrouter/free",
+        }), patch.object(provider_demo, "ChatOpenAI") as openai:
+            provider_demo.get_model("openai")
+            openai.assert_called_once_with(model="gpt-4o-mini")
 
-    def test_dry_run_and_missing_key(self):
-        env = os.environ.copy()
-        env.pop("OPENROUTER_API_KEY", None)
-        dry = subprocess.run([sys.executable, "demo.py", "--dry-run"], env=env,
-                             capture_output=True, text=True)
-        self.assertEqual(dry.returncode, 0)
-        self.assertIn("[refunds]", dry.stdout)
-        live = subprocess.run([sys.executable, "demo.py"], env=env,
-                              capture_output=True, text=True)
-        self.assertNotEqual(live.returncode, 0)
-        self.assertIn("Set OPENROUTER_API_KEY", live.stderr)
+        with patch.dict(os.environ, {
+            "OPENAI_MODEL": "gpt-4o-mini",
+            "OPENROUTER_MODEL": "openrouter/free",
+        }), patch.object(provider_demo, "ChatOpenRouter") as openrouter:
+            provider_demo.get_model("openrouter")
+            openrouter.assert_called_once_with(model="openrouter/free")
 
-    def test_live_chain_with_fake_model(self):
-        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"}), \
-             patch.object(demo, "ChatOpenRouter",
-                          return_value=RunnableLambda(lambda _: AIMessage(content="14 days [refunds]"))), \
-             patch.object(sys, "argv", ["demo.py"]):
-            self.assertEqual(demo.main(), 0)
+        with self.assertRaises(ValueError):
+            provider_demo.get_model("unsupported")
 
 
 if __name__ == "__main__":
